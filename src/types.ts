@@ -184,7 +184,13 @@ export interface ScoreAnswer {
   probabilities: Record<string, number>;
 }
 
-export type JevAnswer = NoulAnswer | ChoiceAnswer | ScoreAnswer;
+/** The Vercel AI Gateway's answer to a `boolean` question. */
+export interface BooleanAnswer {
+  type?: 'boolean';
+  probability: number;
+}
+
+export type JevAnswer = NoulAnswer | BooleanAnswer | ChoiceAnswer | ScoreAnswer;
 
 export interface JevResponse {
   model?: string;

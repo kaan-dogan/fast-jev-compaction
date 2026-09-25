@@ -40,8 +40,9 @@ function transcript(): SessionMessage[] {
   ];
 }
 
-function jevFetch(answer: (name: string) => number, bodies: string[] = []) {
-  return async (_url: string, init?: { body?: string }) => {
+function jevFetch(answer: (name: string) => number, bodies: string[] = [], urls: string[] = []) {
+  return async (url: string, init?: { body?: string }) => {
+    urls.push(url);
     bodies.push(init?.body ?? '');
     const { questions } = JSON.parse(init?.body ?? '{}') as { questions: Record<string, unknown> };
     const answers = Object.fromEntries(
@@ -125,6 +126,17 @@ describe('compactSession', () => {
     expect(summarize(output)).toMatch(/^\d+% reduction; 1 kept, 1 call_dropped; state ~\d+ tokens \(full\) in 1 request\(s\)$/);
     expect(decisionLog(output)).toBe('t1:Read:drop_call/call=0.10/result=0.10 t2:Bash:keep/call=0.90/result=0.90');
     expect(decisionLogLines(output)).toEqual([`decisions: ${decisionLog(output)}`]);
+  });
+
+  it('sends to the configured baseUrl', async () => {
+    const urls: string[] = [];
+    const bodies: string[] = [];
+    const url = 'https://ai-gateway.vercel.sh/v1/evaluate';
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1, baseUrl: url }), apiKey: 'k' };
+    expect(config.baseUrl).toBe(url);
+    await compactSession(transcript(), config, jevFetch(() => 0.9, bodies, urls));
+    expect(urls).toEqual([url]);
+    expect(JSON.parse(bodies[0]!).model).toBe('typesafe-ai/jev');
   });
 
   it('splits a long decision log into ui.log lines under the host limit', async () => {

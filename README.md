@@ -102,7 +102,7 @@ put it in a source file.
 | --- | --- | --- |
 | `apiKey` | `TYPESAFE_API_KEY` | TypeSafe API key (`compactMessages`/`JevClient`) |
 | `model` | `jev-latest` | Jev model name |
-| `baseUrl` | `https://api.typesafe.ai/v1/systemone` | System One endpoint |
+| `baseUrl` | `https://api.typesafe.ai/v1/systemone` | System One endpoint, or the Vercel AI Gateway's `https://ai-gateway.vercel.sh/v1/evaluate` (the plugin reads `TYPESAFE_BASE_URL`) |
 | `fetch` | native `fetch` | Injectable fetch implementation for tests |
 | `goal` | last 3 user prompts | Ongoing task description included in the state |
 | `keepThreshold` | `0.5` | Minimum keep probability for a call or result to stay |
@@ -149,6 +149,12 @@ either from the shell or as slash commands inside a session:
 claude plugin marketplace add tamaratran/fast-jev-compaction
 claude plugin install fast-jev-compaction@fast-jev-compaction
 ```
+
+To go through the Vercel AI Gateway instead of TypeSafe directly, put an AI
+Gateway key in `TYPESAFE_API_KEY` and add
+`"TYPESAFE_BASE_URL": "https://ai-gateway.vercel.sh/v1/evaluate"` to the same
+`env` block (or set the `baseUrl` option). Requests then use the gateway's
+`typesafe-ai/jev` model and `boolean` questions.
 
 The install prompts for the plugin options (API key, thresholds, `truncateHeadChars`,
 …); leave them at their defaults to use `TYPESAFE_API_KEY` from the environment.

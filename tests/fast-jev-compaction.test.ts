@@ -10,6 +10,7 @@ import {
   estimateTokens,
   fitState,
   JevClient,
+  noulAnswer,
   parseJevResponse,
   reductionRatio,
   resolveOptions,
@@ -401,6 +402,22 @@ describe('HTTP client', () => {
       state: { a: 1 },
       questions: { q: { type: 'noul', instructions: 'x' } },
     });
+  });
+
+  it('speaks the Vercel AI Gateway dialect when pointed at it', () => {
+    const url = 'https://ai-gateway.vercel.sh/v1/evaluate';
+    const request = buildJevRequest({ apiKey: 'k', baseUrl: url }, { a: 1 }, {
+      q: { type: 'noul', instructions: 'x' },
+    });
+    expect(request.url).toBe(url);
+    expect(JSON.parse(request.body)).toEqual({
+      model: 'typesafe-ai/jev',
+      state: { a: 1 },
+      questions: { q: { type: 'boolean', instructions: 'x' } },
+    });
+    const pinned = buildJevRequest({ apiKey: 'k', baseUrl: url, model: 'typesafe-ai/jev-2' }, {}, {});
+    expect(JSON.parse(pinned.body).model).toBe('typesafe-ai/jev-2');
+    expect(noulAnswer({ q: { type: 'boolean', probability: 0.13 } }, 'q')).toBe(0.13);
   });
 
   it('rejects failed and malformed responses', () => {
