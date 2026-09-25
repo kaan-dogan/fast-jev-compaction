@@ -21,7 +21,11 @@ export const DEFAULT_OPTIONS: ResolvedCompactOptions = {
   maxStateTokens: 25_000,
   maxRequestTokens: 30_000,
   truncateHeadChars: 300,
+  stubDroppedCalls: false,
 };
+
+/** Characters of a dropped call's input kept in its stub. */
+const STUB_INPUT_CHARS = 200;
 
 /** Tokens the request envelope (`model`, key names) adds around state and questions. */
 const REQUEST_OVERHEAD_TOKENS = 20;
@@ -49,6 +53,7 @@ export function resolveOptions(options: CompactOptions = {}): ResolvedCompactOpt
       0,
       Math.floor(finite(options.truncateHeadChars, DEFAULT_OPTIONS.truncateHeadChars)),
     ),
+    stubDroppedCalls: options.stubDroppedCalls ?? DEFAULT_OPTIONS.stubDroppedCalls,
   };
 }
 
@@ -140,9 +145,19 @@ function truncatedResultText(text: string, isError: boolean, headChars: number):
   }; re-run the tool if needed]`;
 }
 
+/** The note left in the assistant's text where a dropped call was. */
+export function droppedCallStub(call: Pick<ToolCall, 'tool' | 'input' | 'resultChars' | 'isError'>): string {
+  let input = JSON.stringify(call.input) ?? '';
+  if (input.length > STUB_INPUT_CHARS) input = `${input.slice(0, STUB_INPUT_CHARS)}…`;
+  return `[fast-jev-compaction removed a ${call.tool} call ${input} and its ${call.resultChars}-char ${
+    call.isError ? 'error ' : ''
+  }output; re-run it if the contents are needed]`;
+}
+
 /**
  * Rebuilds the conversation from the decisions. A dropped call disappears
- * together with its result; a dropped result keeps a bounded head and note.
+ * together with its result (with `stubs`, a one-line note takes its place in
+ * the assistant's text); a dropped result keeps a bounded head and note.
  * Messages that lose all their content are removed; untouched messages are
  * returned as the same objects they came in as.
  */
@@ -151,8 +166,10 @@ export function applyDecisions(
   decisions: readonly CallDecision[],
   calls: readonly ToolCall[],
   headChars: number,
+  stubs = false,
 ): Message[] {
   const byId = new Map(calls.map((call) => [call.id, call]));
+  const byUseId = new Map(calls.map((call) => [call.tool_use_id, call]));
   const actions = new Map<string, CallDecision['action']>();
   for (const decision of decisions) {
     const call = byId.get(decision.id);
@@ -214,10 +231,19 @@ export function applyDecisions(
       kept.push(message);
       continue;
     }
-    if (message.text.trim().length === 0 && toolUses.length === 0 && toolResults.length === 0) {
+    let text = message.text;
+    if (stubs) {
+      const notes = message.toolUses
+        .filter((tool) => actions.get(tool.tool_use_id) === 'drop_call')
+        .map((tool) => byUseId.get(tool.tool_use_id))
+        .filter((call): call is ToolCall => call !== undefined)
+        .map(droppedCallStub);
+      if (notes.length > 0) text = [text, ...notes].filter((part) => part.trim()).join('\n');
+    }
+    if (text.trim().length === 0 && toolUses.length === 0 && toolResults.length === 0) {
       continue;
     }
-    const rebuilt: Message = { role: message.role, text: message.text, toolUses };
+    const rebuilt: Message = { role: message.role, text, toolUses };
     if (toolResults.length > 0) rebuilt.toolResults = toolResults;
     kept.push(rebuilt);
   }
@@ -286,6 +312,7 @@ export async function compact(
     decisions,
     calls,
     resolved.truncateHeadChars,
+    resolved.stubDroppedCalls,
   );
   return {
     messages: kept,

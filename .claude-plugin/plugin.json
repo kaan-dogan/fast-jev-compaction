@@ -1,6 +1,6 @@
 {
   "name": "fast-jev-compaction",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Verbatim Jev-guided compaction for Claude Code sessions.",
   "license": "MIT",
   "userConfig": {
@@ -62,6 +62,12 @@
       "title": "Jev model",
       "description": "TypeSafe Jev model name.",
       "default": "jev-latest"
+    },
+    "stubDroppedCalls": {
+      "type": "boolean",
+      "title": "Leave a note for dropped calls",
+      "description": "Where a tool call is dropped, leave a one-line note (tool, input, output size) so the assistant knows it ran and can re-run it.",
+      "default": true
     }
   }
 }

@@ -390,6 +390,39 @@ describe('compact', () => {
   });
 });
 
+describe('stubDroppedCalls', () => {
+  it('leaves a note where a dropped call was, and nothing without the option', async () => {
+    const messages: Message[] = [
+      { role: 'user', text: 'read it', toolUses: [] },
+      {
+        role: 'assistant',
+        text: '',
+        toolUses: [{ tool_use_id: 'u1', tool: 'Read', input: { file_path: '/a.py' } }],
+      },
+      { role: 'user', text: '', toolUses: [], toolResults: [{ tool_use_id: 'u1', text: 'x'.repeat(5000) }] },
+      { role: 'assistant', text: 'done', toolUses: [] },
+    ];
+    const low: JevAsker = {
+      async ask(_state, questions) {
+        return {
+          answers: Object.fromEntries(
+            Object.keys(questions).map((k) => [k, { type: 'noul' as const, noul: 0.1 }]),
+          ),
+        };
+      },
+    };
+    const stubbed = await compact(messages, low, { preserveRecentMessages: 1, stubDroppedCalls: true });
+    expect(stubbed.messages.map((m) => m.text)).toEqual([
+      'read it',
+      '[fast-jev-compaction removed a Read call {"file_path":"/a.py"} and its 5000-char output; re-run it if the contents are needed]',
+      'done',
+    ]);
+    expect(stubbed.messages.every((m) => m.toolUses.length === 0 && !m.toolResults)).toBe(true);
+    const plain = await compact(messages, low, { preserveRecentMessages: 1 });
+    expect(plain.messages.map((m) => m.text)).toEqual(['read it', 'done']);
+  });
+});
+
 describe('HTTP client', () => {
   it('builds a System One request', () => {
     const request = buildJevRequest({ apiKey: 'k' }, { a: 1 }, {

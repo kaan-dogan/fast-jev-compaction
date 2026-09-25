@@ -105,6 +105,11 @@ export interface CompactOptions {
   maxRequestTokens?: number;
   /** Characters of a dropped tool result to retain. Default 300. */
   truncateHeadChars?: number;
+  /**
+   * Leave a one-line note in the assistant's text where a dropped call was,
+   * so the assistant knows it ran and can re-run it. Default false.
+   */
+  stubDroppedCalls?: boolean;
 }
 
 export interface ResolvedCompactOptions {
@@ -114,6 +119,7 @@ export interface ResolvedCompactOptions {
   maxStateTokens: number;
   maxRequestTokens: number;
   truncateHeadChars: number;
+  stubDroppedCalls: boolean;
 }
 
 export interface CompactResult {

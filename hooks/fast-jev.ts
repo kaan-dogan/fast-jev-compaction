@@ -81,6 +81,10 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
     ),
     model: optionString(options, 'model') ?? HOOK_DEFAULTS.model,
   };
+  // A call dropped without a trace leaves the assistant unaware it ran; the
+  // hook leaves a one-line note unless `stubDroppedCalls` is turned off.
+  const stubs = options['stubDroppedCalls'];
+  config.stubDroppedCalls = typeof stubs === 'boolean' ? stubs : true;
   const apiKey = optionString(options, 'apiKey');
   if (apiKey) config.apiKey = apiKey;
   const baseUrl = optionString(options, 'baseUrl');
