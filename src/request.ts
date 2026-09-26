@@ -64,6 +64,34 @@ function toGatewayQuestions(questions: JevQuestions): Record<string, unknown> {
   return out;
 }
 
+/** Statuses worth one more try: rate limits and the gateway's transient 5xx. */
+export function isTransientStatus(status: number): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+/** Waits before retries 1, 2 and 3 of a transient failure. */
+export const RETRY_DELAYS_MS = [1_000, 2_000, 4_000] as const;
+
+export type JevHttpResponse = { status: number; ok: boolean; text: string };
+
+/**
+ * Sends one Jev request, again after each delay while the answer is a
+ * transient failure; the last answer, whatever it is, is returned.
+ */
+export async function sendWithRetries(
+  send: () => Promise<JevHttpResponse>,
+  sleep: (ms: number) => Promise<void>,
+  delays: readonly number[] = RETRY_DELAYS_MS,
+): Promise<JevHttpResponse> {
+  let response = await send();
+  for (const delay of delays) {
+    if (!isTransientStatus(response.status)) break;
+    await sleep(delay);
+    response = await send();
+  }
+  return response;
+}
+
 /** Validates a Jev response body; throws on anything but an `answers` object. */
 export function parseJevResponse(
   status: number,

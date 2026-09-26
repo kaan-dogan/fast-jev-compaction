@@ -1,4 +1,4 @@
-import { buildJevRequest, parseJevResponse } from './request.js';
+import { buildJevRequest, parseJevResponse, sendWithRetries } from './request.js';
 import type { JevAsker, JevQuestions, JevResponse, JevState } from './types.js';
 
 export interface JevClientOptions {
@@ -33,11 +33,17 @@ export class JevClient implements JevAsker {
       state,
       questions,
     );
-    const response = await this.fetcher(request.url, {
-      method: request.method,
-      headers: request.headers,
-      body: request.body,
-    });
-    return parseJevResponse(response.status, response.ok, await response.text());
+    const response = await sendWithRetries(
+      async () => {
+        const r = await this.fetcher(request.url, {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+        });
+        return { status: r.status, ok: r.ok, text: await r.text() };
+      },
+      (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    );
+    return parseJevResponse(response.status, response.ok, response.text);
   }
 }

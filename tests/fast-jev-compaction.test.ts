@@ -12,6 +12,7 @@ import {
   JevClient,
   noulAnswer,
   parseJevResponse,
+  sendWithRetries,
   reductionRatio,
   resolveOptions,
   type HistoryToolCall,
@@ -387,6 +388,40 @@ describe('compact', () => {
     await expect(compact(transcript(), broken, { preserveRecentMessages: 1 })).rejects.toThrow(
       /Invalid Jev answer/,
     );
+  });
+});
+
+describe('sendWithRetries', () => {
+  it('retries transient failures after each delay and stops on anything else', async () => {
+    const statuses = [503, 429, 200];
+    const slept: number[] = [];
+    const response = await sendWithRetries(
+      async () => {
+        const status = statuses.shift()!;
+        return { status, ok: status === 200, text: '{"answers":{}}' };
+      },
+      async (ms) => {
+        slept.push(ms);
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(slept).toEqual([1000, 2000]);
+    let calls = 0;
+    const denied = await sendWithRetries(
+      async () => ({ status: 401, ok: false, text: 'no' }),
+      async () => {
+        calls += 1;
+      },
+    );
+    expect(denied.status).toBe(401);
+    expect(calls).toBe(0);
+    let tries = 0;
+    const down = await sendWithRetries(
+      async () => ({ status: 503 + 0 * ++tries, ok: false, text: 'down' }),
+      async () => {},
+    );
+    expect(down.status).toBe(503);
+    expect(tries).toBe(4);
   });
 });
 
