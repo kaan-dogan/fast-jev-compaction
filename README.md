@@ -1,5 +1,10 @@
 # fast-jev-compaction
 
+> **Fork notu (kaan-dogan):** bu fork Vercel AI Gateway desteği, silinen çağrılar için not,
+> geçici hatalarda tekrar deneme ve bir deneme aracı ekliyor. Kurulum, ölçümler ve açık kararlar:
+> [`docs/2026-09-27-fork-kurulum-olcumler-ve-kararlar.md`](docs/2026-09-27-fork-kurulum-olcumler-ve-kararlar.md).
+
+
 Claude Code plugin that replaces the compaction summary with Jev decisions:
 every tool call and result is scored in one fast request, stale ones are
 dropped or truncated, everything kept stays verbatim. Also usable as an npm
